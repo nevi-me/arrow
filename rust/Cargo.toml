@@ -25,6 +25,7 @@ members = [
         "arrow-flight",
         "integration-testing",
 	"benchmarks",
+        "gandiva"
 ]
 
 # this package is excluded because it requires different compilation flags, thereby significantly changing
