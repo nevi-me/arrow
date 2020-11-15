@@ -29,9 +29,10 @@ pushd ${source_dir}
 
 # run unit tests
 cargo test
-# run unit tests with SIMD on
+# run unit tests with non-default features on
 pushd arrow
-cargo test --features "simd avx512"
+cargo test --features "simd"
+cargo test --features "avx512"
 popd
 
 # test arrow examples
