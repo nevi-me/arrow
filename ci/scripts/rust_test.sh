@@ -31,7 +31,7 @@ pushd ${source_dir}
 cargo test
 # run unit tests with SIMD on
 pushd arrow
-cargo test --features "simd"
+cargo test --features "simd avx512"
 popd
 
 # test arrow examples
