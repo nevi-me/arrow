@@ -340,7 +340,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                 from_type, to_type,
             ))),
         },
-        (Boolean, _) => match to_type {
+        (Boolean, _) => Ok(match to_type {
             UInt8 => cast_bool_to_numeric::<UInt8Type>(array),
             UInt16 => cast_bool_to_numeric::<UInt16Type>(array),
             UInt32 => cast_bool_to_numeric::<UInt32Type>(array),
@@ -353,19 +353,21 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
             Float64 => cast_bool_to_numeric::<Float64Type>(array),
             Utf8 => {
                 let array = array.as_any().downcast_ref::<BooleanArray>().unwrap();
-                Ok(Arc::new(
+                Arc::new(
                     array
                         .iter()
                         .map(|value| value.map(|value| if value { "1" } else { "0" }))
                         .collect::<StringArray>(),
-                ))
+                )
             }
-            _ => Err(ArrowError::ComputeError(format!(
-                "Casting from {:?} to {:?} not supported",
-                from_type, to_type,
-            ))),
-        },
-        (Utf8, _) => match to_type {
+            _ => {
+                return Err(ArrowError::ComputeError(format!(
+                    "Casting from {:?} to {:?} not supported",
+                    from_type, to_type,
+                )))
+            }
+        }),
+        (Utf8, _) => Ok(match to_type {
             UInt8 => cast_string_to_numeric::<UInt8Type>(array),
             UInt16 => cast_string_to_numeric::<UInt16Type>(array),
             UInt32 => cast_string_to_numeric::<UInt32Type>(array),
@@ -392,7 +394,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                         };
                     }
                 }
-                Ok(Arc::new(builder.finish()) as ArrayRef)
+                Arc::new(builder.finish()) as ArrayRef
             }
             Date64 => {
                 let string_array = array.as_any().downcast_ref::<StringArray>().unwrap();
@@ -409,14 +411,16 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                         };
                     }
                 }
-                Ok(Arc::new(builder.finish()) as ArrayRef)
+                Arc::new(builder.finish()) as ArrayRef
             }
-            _ => Err(ArrowError::ComputeError(format!(
-                "Casting from {:?} to {:?} not supported",
-                from_type, to_type,
-            ))),
-        },
-        (_, Utf8) => match from_type {
+            _ => {
+                return Err(ArrowError::ComputeError(format!(
+                    "Casting from {:?} to {:?} not supported",
+                    from_type, to_type,
+                )))
+            }
+        }),
+        (_, Utf8) => Ok(match from_type {
             UInt8 => cast_numeric_to_string::<UInt8Type>(array),
             UInt16 => cast_numeric_to_string::<UInt16Type>(array),
             UInt32 => cast_numeric_to_string::<UInt32Type>(array),
@@ -429,20 +433,22 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
             Float64 => cast_numeric_to_string::<Float64Type>(array),
             Binary => {
                 let array = array.as_any().downcast_ref::<BinaryArray>().unwrap();
-                Ok(Arc::new(
+                Arc::new(
                     array
                         .iter()
                         .map(|maybe_value| {
                             maybe_value.and_then(|value| str::from_utf8(value).ok())
                         })
                         .collect::<StringArray>(),
-                ))
+                )
             }
-            _ => Err(ArrowError::ComputeError(format!(
-                "Casting from {:?} to {:?} not supported",
-                from_type, to_type,
-            ))),
-        },
+            _ => {
+                return Err(ArrowError::ComputeError(format!(
+                    "Casting from {:?} to {:?} not supported",
+                    from_type, to_type,
+                )))
+            }
+        }),
 
         // start numeric casts
         (UInt8, UInt16) => cast_numeric_arrays::<UInt8Type, UInt16Type>(array),
@@ -547,27 +553,27 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
         // end numeric casts
 
         // temporal casts
-        (Int32, Date32) => cast_array_data::<Date32Type>(array, to_type.clone()),
+        (Int32, Date32) => Ok(cast_array_data::<Date32Type>(array, to_type.clone())),
         (Int32, Time32(TimeUnit::Second)) => {
-            cast_array_data::<Time32SecondType>(array, to_type.clone())
+            Ok(cast_array_data::<Time32SecondType>(array, to_type.clone()))
         }
-        (Int32, Time32(TimeUnit::Millisecond)) => {
-            cast_array_data::<Time32MillisecondType>(array, to_type.clone())
-        }
+        (Int32, Time32(TimeUnit::Millisecond)) => Ok(cast_array_data::<
+            Time32MillisecondType,
+        >(array, to_type.clone())),
         // No support for microsecond/nanosecond with i32
-        (Date32, Int32) => cast_array_data::<Int32Type>(array, to_type.clone()),
-        (Time32(_), Int32) => cast_array_data::<Int32Type>(array, to_type.clone()),
-        (Int64, Date64) => cast_array_data::<Date64Type>(array, to_type.clone()),
+        (Date32, Int32) => Ok(cast_array_data::<Int32Type>(array, to_type.clone())),
+        (Time32(_), Int32) => Ok(cast_array_data::<Int32Type>(array, to_type.clone())),
+        (Int64, Date64) => Ok(cast_array_data::<Date64Type>(array, to_type.clone())),
         // No support for second/milliseconds with i64
-        (Int64, Time64(TimeUnit::Microsecond)) => {
-            cast_array_data::<Time64MicrosecondType>(array, to_type.clone())
-        }
-        (Int64, Time64(TimeUnit::Nanosecond)) => {
-            cast_array_data::<Time64NanosecondType>(array, to_type.clone())
-        }
+        (Int64, Time64(TimeUnit::Microsecond)) => Ok(cast_array_data::<
+            Time64MicrosecondType,
+        >(array, to_type.clone())),
+        (Int64, Time64(TimeUnit::Nanosecond)) => Ok(cast_array_data::<
+            Time64NanosecondType,
+        >(array, to_type.clone())),
 
-        (Date64, Int64) => cast_array_data::<Int64Type>(array, to_type.clone()),
-        (Time64(_), Int64) => cast_array_data::<Int64Type>(array, to_type.clone()),
+        (Date64, Int64) => Ok(cast_array_data::<Int64Type>(array, to_type.clone())),
+        (Time64(_), Int64) => Ok(cast_array_data::<Int64Type>(array, to_type.clone())),
         (Date32, Date64) => {
             let date_array = array.as_any().downcast_ref::<Date32Array>().unwrap();
 
@@ -619,14 +625,14 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
             let array_ref = Arc::new(converted) as ArrayRef;
             use TimeUnit::*;
             match to_unit {
-                Microsecond => cast_array_data::<TimestampMicrosecondType>(
+                Microsecond => Ok(cast_array_data::<TimestampMicrosecondType>(
                     &array_ref,
                     to_type.clone(),
-                ),
-                Nanosecond => cast_array_data::<TimestampNanosecondType>(
+                )),
+                Nanosecond => Ok(cast_array_data::<TimestampNanosecondType>(
                     &array_ref,
                     to_type.clone(),
-                ),
+                )),
                 _ => unreachable!("array type not supported"),
             }
         }
@@ -671,10 +677,12 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                 _ => unreachable!("array type not supported"),
             }
         }
-        (Timestamp(_, _), Int64) => cast_array_data::<Int64Type>(array, to_type.clone()),
+        (Timestamp(_, _), Int64) => {
+            Ok(cast_array_data::<Int64Type>(array, to_type.clone()))
+        }
         (Int64, Timestamp(to_unit, _)) => {
             use TimeUnit::*;
-            match to_unit {
+            Ok(match to_unit {
                 Second => cast_array_data::<TimestampSecondType>(array, to_type.clone()),
                 Millisecond => {
                     cast_array_data::<TimestampMillisecondType>(array, to_type.clone())
@@ -685,7 +693,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                 Nanosecond => {
                     cast_array_data::<TimestampNanosecondType>(array, to_type.clone())
                 }
-            }
+            })
         }
         (Timestamp(from_unit, _), Timestamp(to_unit, _)) => {
             let time_array = Int64Array::from(array.data());
@@ -706,7 +714,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
             };
             let array_ref = Arc::new(converted) as ArrayRef;
             use TimeUnit::*;
-            match to_unit {
+            Ok(match to_unit {
                 Second => {
                     cast_array_data::<TimestampSecondType>(&array_ref, to_type.clone())
                 }
@@ -722,7 +730,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                     &array_ref,
                     to_type.clone(),
                 ),
-            }
+            })
         }
         (Timestamp(from_unit, _), Date32) => {
             let time_array = Int64Array::from(array.data());
@@ -755,7 +763,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                     )?) as ArrayRef)
                 }
                 std::cmp::Ordering::Equal => {
-                    cast_array_data::<Date64Type>(array, to_type.clone())
+                    Ok(cast_array_data::<Date64Type>(array, to_type.clone()))
                 }
                 std::cmp::Ordering::Greater => {
                     let time_array = Date64Array::from(array.data());
@@ -769,7 +777,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
         // date64 to timestamp might not make sense,
         (Int64, Duration(to_unit)) => {
             use TimeUnit::*;
-            match to_unit {
+            Ok(match to_unit {
                 Second => cast_array_data::<DurationSecondType>(array, to_type.clone()),
                 Millisecond => {
                     cast_array_data::<DurationMillisecondType>(array, to_type.clone())
@@ -780,7 +788,7 @@ pub fn cast(array: &ArrayRef, to_type: &DataType) -> Result<ArrayRef> {
                 Nanosecond => {
                     cast_array_data::<DurationNanosecondType>(array, to_type.clone())
                 }
-            }
+            })
         }
 
         // null to primitive/flat types
@@ -821,7 +829,7 @@ const EPOCH_DAYS_FROM_CE: i32 = 719_163;
 /// Arrays should have the same primitive data type, otherwise this should fail.
 /// We do not perform this check on primitive data types as we only use this
 /// function internally, where it is guaranteed to be infallible.
-fn cast_array_data<TO>(array: &ArrayRef, to_type: DataType) -> Result<ArrayRef>
+fn cast_array_data<TO>(array: &ArrayRef, to_type: DataType) -> ArrayRef
 where
     TO: ArrowNumericType,
 {
@@ -834,7 +842,7 @@ where
         array.data().buffers().to_vec(),
         vec![],
     ));
-    Ok(Arc::new(PrimitiveArray::<TO>::from(data)) as ArrayRef)
+    Arc::new(PrimitiveArray::<TO>::from(data)) as ArrayRef
 }
 
 /// Convert Array into a PrimitiveArray of type, and apply numeric cast
@@ -869,17 +877,17 @@ where
 }
 
 /// Cast numeric types to Utf8
-fn cast_numeric_to_string<FROM>(array: &ArrayRef) -> Result<ArrayRef>
+fn cast_numeric_to_string<FROM>(array: &ArrayRef) -> ArrayRef
 where
     FROM: ArrowNumericType,
     FROM::Native: lexical_core::ToLexical,
 {
-    Ok(Arc::new(numeric_to_string_cast::<FROM>(
+    Arc::new(numeric_to_string_cast::<FROM>(
         array
             .as_any()
             .downcast_ref::<PrimitiveArray<FROM>>()
             .unwrap(),
-    )))
+    ))
 }
 
 fn numeric_to_string_cast<T>(from: &PrimitiveArray<T>) -> StringArray
@@ -893,14 +901,14 @@ where
 }
 
 /// Cast numeric types to Utf8
-fn cast_string_to_numeric<T>(from: &ArrayRef) -> Result<ArrayRef>
+fn cast_string_to_numeric<T>(from: &ArrayRef) -> ArrayRef
 where
     T: ArrowNumericType,
     <T as ArrowPrimitiveType>::Native: lexical_core::FromLexical,
 {
-    Ok(Arc::new(string_to_numeric_cast::<T>(
+    Arc::new(string_to_numeric_cast::<T>(
         from.as_any().downcast_ref::<StringArray>().unwrap(),
-    )))
+    ))
 }
 
 fn string_to_numeric_cast<T>(from: &StringArray) -> PrimitiveArray<T>
@@ -959,14 +967,14 @@ where
 /// Cast Boolean types to numeric
 ///
 /// `false` returns 0 while `true` returns 1
-fn cast_bool_to_numeric<TO>(from: &ArrayRef) -> Result<ArrayRef>
+fn cast_bool_to_numeric<TO>(from: &ArrayRef) -> ArrayRef
 where
     TO: ArrowNumericType,
     TO::Native: num::cast::NumCast,
 {
-    Ok(Arc::new(bool_to_numeric_cast::<TO>(
+    Arc::new(bool_to_numeric_cast::<TO>(
         from.as_any().downcast_ref::<BooleanArray>().unwrap(),
-    )))
+    ))
 }
 
 fn bool_to_numeric_cast<T>(from: &BooleanArray) -> PrimitiveArray<T>

@@ -45,7 +45,7 @@ macro_rules! compare_op {
         }
 
         let null_bit_buffer =
-            combine_option_bitmap($left.data_ref(), $right.data_ref(), $left.len())?;
+            combine_option_bitmap($left.data_ref(), $right.data_ref(), $left.len());
 
         let buffer = (0..$left.len())
             .map(|i| $op($left.value(i), $right.value(i)))
@@ -122,7 +122,7 @@ pub fn like_utf8<OffsetSize: StringOffsetSizeTrait>(
     }
 
     let null_bit_buffer =
-        combine_option_bitmap(left.data_ref(), right.data_ref(), left.len())?;
+        combine_option_bitmap(left.data_ref(), right.data_ref(), left.len());
 
     let mut result = BooleanBufferBuilder::new(left.len());
     for i in 0..left.len() {
@@ -236,7 +236,7 @@ pub fn nlike_utf8<OffsetSize: StringOffsetSizeTrait>(
     }
 
     let null_bit_buffer =
-        combine_option_bitmap(left.data_ref(), right.data_ref(), left.len())?;
+        combine_option_bitmap(left.data_ref(), right.data_ref(), left.len());
 
     let mut result = BooleanBufferBuilder::new(left.len());
     for i in 0..left.len() {
@@ -428,7 +428,7 @@ where
         ));
     }
 
-    let null_bit_buffer = combine_option_bitmap(left.data_ref(), right.data_ref(), len)?;
+    let null_bit_buffer = combine_option_bitmap(left.data_ref(), right.data_ref(), len);
 
     let lanes = T::lanes();
     let buffer_size = bit_util::ceil(len, 8);
@@ -743,7 +743,7 @@ where
     let num_bytes = bit_util::ceil(left_len, 8);
 
     let not_both_null_bit_buffer =
-        match combine_option_bitmap(left.data_ref(), right.data_ref(), left_len)? {
+        match combine_option_bitmap(left.data_ref(), right.data_ref(), left_len) {
             Some(buff) => buff,
             None => new_all_set_buffer(num_bytes),
         };
@@ -798,7 +798,7 @@ where
     let num_bytes = bit_util::ceil(left_len, 8);
 
     let not_both_null_bit_buffer =
-        match combine_option_bitmap(left.data_ref(), right.data_ref(), left_len)? {
+        match combine_option_bitmap(left.data_ref(), right.data_ref(), left_len) {
             Some(buff) => buff,
             None => new_all_set_buffer(num_bytes),
         };

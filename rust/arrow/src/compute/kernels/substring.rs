@@ -28,7 +28,7 @@ fn generic_substring<OffsetSize: StringOffsetSizeTrait>(
     array: &GenericStringArray<OffsetSize>,
     start: OffsetSize,
     length: &Option<OffsetSize>,
-) -> Result<ArrayRef> {
+) -> ArrayRef {
     // compute current offsets
     let offsets = array.data_ref().clone().buffers()[0].clone();
     let offsets: &[OffsetSize] = unsafe { offsets.typed_data::<OffsetSize>() };
@@ -86,14 +86,14 @@ fn generic_substring<OffsetSize: StringOffsetSizeTrait>(
         ],
         vec![],
     );
-    Ok(make_array(Arc::new(data)))
+    make_array(Arc::new(data))
 }
 
 /// Returns an ArrayRef with a substring starting from `start` and with optional length `length` of each of the elements in `array`.
 /// `start` can be negative, in which case the start counts from the end of the string.
 /// this function errors when the passed array is not a \[Large\]String array.
 pub fn substring(array: &Array, start: i64, length: &Option<u64>) -> Result<ArrayRef> {
-    match array.data_type() {
+    Ok(match array.data_type() {
         DataType::LargeUtf8 => generic_substring(
             array
                 .as_any()
@@ -110,11 +110,13 @@ pub fn substring(array: &Array, start: i64, length: &Option<u64>) -> Result<Arra
             start as i32,
             &length.map(|e| e as i32),
         ),
-        _ => Err(ArrowError::ComputeError(format!(
-            "substring does not support type {:?}",
-            array.data_type()
-        ))),
-    }
+        _ => {
+            return Err(ArrowError::ComputeError(format!(
+                "substring does not support type {:?}",
+                array.data_type()
+            )))
+        }
+    })
 }
 
 #[cfg(test)]

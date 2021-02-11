@@ -1499,10 +1499,7 @@ impl FieldData {
     }
 
     /// Appends a single value to this `FieldData`'s `values_buffer`.
-    fn append_to_values_buffer<T: ArrowPrimitiveType>(
-        &mut self,
-        v: T::Native,
-    ) -> Result<()> {
+    fn append_to_values_buffer<T: ArrowPrimitiveType>(&mut self, v: T::Native) {
         let values_buffer = self
             .values_buffer
             .take()
@@ -1517,11 +1514,10 @@ impl FieldData {
         if let Some(b) = &mut self.bitmap_builder {
             b.append(true)
         };
-        Ok(())
     }
 
     /// Appends a null to this `FieldData`.
-    fn append_null<T: ArrowPrimitiveType>(&mut self) -> Result<()> {
+    fn append_null<T: ArrowPrimitiveType>(&mut self) {
         if let Some(b) = &mut self.bitmap_builder {
             let values_buffer = self
                 .values_buffer
@@ -1535,7 +1531,6 @@ impl FieldData {
             self.slots += 1;
             b.append(false);
         };
-        Ok(())
     }
 
     /// Appends a null to this `FieldData` when the type is not known at compile time.
@@ -1547,32 +1542,31 @@ impl FieldData {
     /// Note, this method does **not** update the length of the `UnionArray` (this is done by the
     /// main append operation) and assumes that it is called from a method that is generic over `T`
     /// where `T` satisfies the bound `ArrowPrimitiveType`.
-    fn append_null_dynamic(&mut self) -> Result<()> {
+    fn append_null_dynamic(&mut self) {
         match self.data_type {
             DataType::Null => unimplemented!(),
-            DataType::Int8 => self.append_null::<Int8Type>()?,
-            DataType::Int16 => self.append_null::<Int16Type>()?,
+            DataType::Int8 => self.append_null::<Int8Type>(),
+            DataType::Int16 => self.append_null::<Int16Type>(),
             DataType::Int32
             | DataType::Date32
             | DataType::Time32(_)
             | DataType::Interval(IntervalUnit::YearMonth) => {
-                self.append_null::<Int32Type>()?
+                self.append_null::<Int32Type>()
             }
             DataType::Int64
             | DataType::Timestamp(_, _)
             | DataType::Date64
             | DataType::Time64(_)
             | DataType::Interval(IntervalUnit::DayTime)
-            | DataType::Duration(_) => self.append_null::<Int64Type>()?,
-            DataType::UInt8 => self.append_null::<UInt8Type>()?,
-            DataType::UInt16 => self.append_null::<UInt16Type>()?,
-            DataType::UInt32 => self.append_null::<UInt32Type>()?,
-            DataType::UInt64 => self.append_null::<UInt64Type>()?,
-            DataType::Float32 => self.append_null::<Float32Type>()?,
-            DataType::Float64 => self.append_null::<Float64Type>()?,
+            | DataType::Duration(_) => self.append_null::<Int64Type>(),
+            DataType::UInt8 => self.append_null::<UInt8Type>(),
+            DataType::UInt16 => self.append_null::<UInt16Type>(),
+            DataType::UInt32 => self.append_null::<UInt32Type>(),
+            DataType::UInt64 => self.append_null::<UInt64Type>(),
+            DataType::Float32 => self.append_null::<Float32Type>(),
+            DataType::Float64 => self.append_null::<Float64Type>(),
             _ => unreachable!("All cases of types that satisfy the trait bounds over T are covered above."),
         };
-        Ok(())
     }
 }
 
@@ -1633,7 +1627,7 @@ impl UnionBuilder {
         // Handle sparse union
         if self.value_offset_builder.is_none() {
             for (_, fd) in self.fields.iter_mut() {
-                fd.append_null_dynamic()?;
+                fd.append_null_dynamic();
             }
         }
         self.len += 1;
@@ -1659,7 +1653,7 @@ impl UnionBuilder {
                         Some(BooleanBufferBuilder::new(1)),
                     );
                     for _ in 0..self.len {
-                        fd.append_null::<T>()?;
+                        fd.append_null::<T>();
                     }
                     fd
                 }
@@ -1676,12 +1670,12 @@ impl UnionBuilder {
             None => {
                 for (name, fd) in self.fields.iter_mut() {
                     if name != &type_name {
-                        fd.append_null_dynamic()?;
+                        fd.append_null_dynamic();
                     }
                 }
             }
         }
-        field_data.append_to_values_buffer::<T>(v)?;
+        field_data.append_to_values_buffer::<T>(v);
         self.fields.insert(type_name, field_data);
 
         // Update the bitmap builder if it exists

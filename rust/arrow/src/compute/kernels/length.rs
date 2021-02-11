@@ -24,7 +24,7 @@ use crate::{
 };
 use std::sync::Arc;
 
-fn length_string<OffsetSize>(array: &Array, data_type: DataType) -> Result<ArrayRef>
+fn length_string<OffsetSize>(array: &Array, data_type: DataType) -> ArrayRef
 where
     OffsetSize: OffsetSizeTrait,
 {
@@ -59,7 +59,7 @@ where
         vec![buffer],
         vec![],
     );
-    Ok(make_array(Arc::new(data)))
+    make_array(Arc::new(data))
 }
 
 /// Returns an array of Int32/Int64 denoting the number of characters in each string in the array.
@@ -68,14 +68,16 @@ where
 /// * length of null is null.
 /// * length is in number of bytes
 pub fn length(array: &Array) -> Result<ArrayRef> {
-    match array.data_type() {
+    Ok(match array.data_type() {
         DataType::Utf8 => length_string::<i32>(array, DataType::Int32),
         DataType::LargeUtf8 => length_string::<i64>(array, DataType::Int64),
-        _ => Err(ArrowError::ComputeError(format!(
-            "length not supported for {:?}",
-            array.data_type()
-        ))),
-    }
+        _ => {
+            return Err(ArrowError::ComputeError(format!(
+                "length not supported for {:?}",
+                array.data_type()
+            )))
+        }
+    })
 }
 
 #[cfg(test)]

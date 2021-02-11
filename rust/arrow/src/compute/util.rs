@@ -31,7 +31,7 @@ pub(super) fn combine_option_bitmap(
     left_data: &ArrayDataRef,
     right_data: &ArrayDataRef,
     len_in_bits: usize,
-) -> Result<Option<Buffer>> {
+) -> Option<Buffer> {
     let left_offset_in_bits = left_data.offset();
     let right_offset_in_bits = right_data.offset();
 
@@ -40,19 +40,19 @@ pub(super) fn combine_option_bitmap(
 
     match left {
         None => match right {
-            None => Ok(None),
-            Some(r) => Ok(Some(r.bit_slice(right_offset_in_bits, len_in_bits))),
+            None => None,
+            Some(r) => Some(r.bit_slice(right_offset_in_bits, len_in_bits)),
         },
         Some(l) => match right {
-            None => Ok(Some(l.bit_slice(left_offset_in_bits, len_in_bits))),
+            None => Some(l.bit_slice(left_offset_in_bits, len_in_bits)),
 
-            Some(r) => Ok(Some(buffer_bin_and(
+            Some(r) => Some(buffer_bin_and(
                 &l,
                 left_offset_in_bits,
                 &r,
                 right_offset_in_bits,
                 len_in_bits,
-            ))),
+            )),
         },
     }
 }
@@ -201,25 +201,22 @@ pub(super) mod tests {
             make_data_with_null_bit_buffer(8, 0, Some(Buffer::from([0b01001010])));
         let inverse_bitmap =
             make_data_with_null_bit_buffer(8, 0, Some(Buffer::from([0b10110101])));
+        assert_eq!(None, combine_option_bitmap(&none_bitmap, &none_bitmap, 8));
         assert_eq!(
-            None,
-            combine_option_bitmap(&none_bitmap, &none_bitmap, 8).unwrap()
+            Some(Buffer::from([0b01001010])),
+            combine_option_bitmap(&some_bitmap, &none_bitmap, 8)
         );
         assert_eq!(
             Some(Buffer::from([0b01001010])),
-            combine_option_bitmap(&some_bitmap, &none_bitmap, 8).unwrap()
+            combine_option_bitmap(&none_bitmap, &some_bitmap, 8,)
         );
         assert_eq!(
             Some(Buffer::from([0b01001010])),
-            combine_option_bitmap(&none_bitmap, &some_bitmap, 8,).unwrap()
-        );
-        assert_eq!(
-            Some(Buffer::from([0b01001010])),
-            combine_option_bitmap(&some_bitmap, &some_bitmap, 8,).unwrap()
+            combine_option_bitmap(&some_bitmap, &some_bitmap, 8,)
         );
         assert_eq!(
             Some(Buffer::from([0b0])),
-            combine_option_bitmap(&some_bitmap, &inverse_bitmap, 8,).unwrap()
+            combine_option_bitmap(&some_bitmap, &inverse_bitmap, 8,)
         );
     }
 

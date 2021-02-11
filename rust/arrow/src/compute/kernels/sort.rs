@@ -90,7 +90,7 @@ pub fn sort_to_indices(
 
     let (v, n) = partition_validity(values);
 
-    match values.data_type() {
+    Ok(match values.data_type() {
         DataType::Boolean => sort_boolean(values, v, n, &options),
         DataType::Int8 => sort_primitive::<Int8Type, _>(values, v, n, cmp, &options),
         DataType::Int16 => sort_primitive::<Int16Type, _>(values, v, n, cmp, &options),
@@ -160,10 +160,12 @@ pub fn sort_to_indices(
             DataType::UInt16 => sort_list::<i32, UInt16Type>(values, v, n, &options),
             DataType::UInt32 => sort_list::<i32, UInt32Type>(values, v, n, &options),
             DataType::UInt64 => sort_list::<i32, UInt64Type>(values, v, n, &options),
-            t => Err(ArrowError::ComputeError(format!(
-                "Sort not supported for list type {:?}",
-                t
-            ))),
+            t => {
+                return Err(ArrowError::ComputeError(format!(
+                    "Sort not supported for list type {:?}",
+                    t
+                )))
+            }
         },
         DataType::LargeList(field) => match field.data_type() {
             DataType::Int8 => sort_list::<i64, Int8Type>(values, v, n, &options),
@@ -174,10 +176,12 @@ pub fn sort_to_indices(
             DataType::UInt16 => sort_list::<i64, UInt16Type>(values, v, n, &options),
             DataType::UInt32 => sort_list::<i64, UInt32Type>(values, v, n, &options),
             DataType::UInt64 => sort_list::<i64, UInt64Type>(values, v, n, &options),
-            t => Err(ArrowError::ComputeError(format!(
-                "Sort not supported for list type {:?}",
-                t
-            ))),
+            t => {
+                return Err(ArrowError::ComputeError(format!(
+                    "Sort not supported for list type {:?}",
+                    t
+                )))
+            }
         },
         DataType::FixedSizeList(field, _) => match field.data_type() {
             DataType::Int8 => sort_list::<i32, Int8Type>(values, v, n, &options),
@@ -188,10 +192,12 @@ pub fn sort_to_indices(
             DataType::UInt16 => sort_list::<i32, UInt16Type>(values, v, n, &options),
             DataType::UInt32 => sort_list::<i32, UInt32Type>(values, v, n, &options),
             DataType::UInt64 => sort_list::<i32, UInt64Type>(values, v, n, &options),
-            t => Err(ArrowError::ComputeError(format!(
-                "Sort not supported for list type {:?}",
-                t
-            ))),
+            t => {
+                return Err(ArrowError::ComputeError(format!(
+                    "Sort not supported for list type {:?}",
+                    t
+                )))
+            }
         },
         DataType::Dictionary(key_type, value_type)
             if *value_type.as_ref() == DataType::Utf8 =>
@@ -221,17 +227,21 @@ pub fn sort_to_indices(
                 DataType::UInt64 => {
                     sort_string_dictionary::<UInt64Type>(values, v, n, &options)
                 }
-                t => Err(ArrowError::ComputeError(format!(
-                    "Sort not supported for dictionary key type {:?}",
-                    t
-                ))),
+                t => {
+                    return Err(ArrowError::ComputeError(format!(
+                        "Sort not supported for dictionary key type {:?}",
+                        t
+                    )))
+                }
             }
         }
-        t => Err(ArrowError::ComputeError(format!(
-            "Sort not supported for data type {:?}",
-            t
-        ))),
-    }
+        t => {
+            return Err(ArrowError::ComputeError(format!(
+                "Sort not supported for data type {:?}",
+                t
+            )))
+        }
+    })
 }
 
 /// Options that define how sort kernels should behave
@@ -259,7 +269,7 @@ fn sort_boolean(
     value_indices: Vec<u32>,
     null_indices: Vec<u32>,
     options: &SortOptions,
-) -> Result<UInt32Array> {
+) -> UInt32Array {
     let values = values
         .as_any()
         .downcast_ref::<BooleanArray>()
@@ -312,7 +322,7 @@ fn sort_boolean(
         vec![],
     ));
 
-    Ok(UInt32Array::from(result_data))
+    UInt32Array::from(result_data)
 }
 
 /// Sort primitive values
@@ -322,7 +332,7 @@ fn sort_primitive<T, F>(
     null_indices: Vec<u32>,
     cmp: F,
     options: &SortOptions,
-) -> Result<UInt32Array>
+) -> UInt32Array
 where
     T: ArrowPrimitiveType,
     T::Native: std::cmp::PartialOrd,
@@ -377,7 +387,7 @@ where
         vec![],
     ));
 
-    Ok(UInt32Array::from(result_data))
+    UInt32Array::from(result_data)
 }
 
 // insert valid and nan values in the correct order depending on the descending flag
@@ -406,7 +416,7 @@ fn sort_string(
     value_indices: Vec<u32>,
     null_indices: Vec<u32>,
     options: &SortOptions,
-) -> Result<UInt32Array> {
+) -> UInt32Array {
     let values = as_string_array(values);
 
     sort_string_helper(
@@ -424,7 +434,7 @@ fn sort_string_dictionary<T: ArrowDictionaryKeyType>(
     value_indices: Vec<u32>,
     null_indices: Vec<u32>,
     options: &SortOptions,
-) -> Result<UInt32Array> {
+) -> UInt32Array {
     let values: &DictionaryArray<T> = as_dictionary_array::<T>(values);
 
     let keys: &PrimitiveArray<T> = &values.keys_array();
@@ -452,7 +462,7 @@ fn sort_string_helper<'a, A: Array, F>(
     null_indices: Vec<u32>,
     options: &SortOptions,
     value_fn: F,
-) -> Result<UInt32Array>
+) -> UInt32Array
 where
     F: Fn(&'a A, u32) -> &str,
 {
@@ -472,13 +482,13 @@ where
 
     if options.nulls_first {
         nulls.append(&mut valid_indices);
-        return Ok(UInt32Array::from(nulls));
+        return UInt32Array::from(nulls);
     }
 
     // no need to sort nulls as they are in the correct order already
     valid_indices.append(&mut nulls);
 
-    Ok(UInt32Array::from(valid_indices))
+    UInt32Array::from(valid_indices)
 }
 
 fn sort_list<S, T>(
@@ -486,7 +496,7 @@ fn sort_list<S, T>(
     value_indices: Vec<u32>,
     mut null_indices: Vec<u32>,
     options: &SortOptions,
-) -> Result<UInt32Array>
+) -> UInt32Array
 where
     S: OffsetSizeTrait,
     T: ArrowPrimitiveType,
@@ -523,11 +533,11 @@ where
 
     if options.nulls_first {
         null_indices.append(&mut valid_indices);
-        return Ok(UInt32Array::from(null_indices));
+        return UInt32Array::from(null_indices);
     }
 
     valid_indices.append(&mut null_indices);
-    Ok(UInt32Array::from(valid_indices))
+    UInt32Array::from(valid_indices)
 }
 
 /// Compare two `Array`s based on the ordering defined in [ord](crate::array::ord).

@@ -674,7 +674,7 @@ impl Decoder {
             }
             DataType::Dictionary(_, _) => {
                 let values_builder =
-                    self.build_string_dictionary_builder::<DICT_TY>(rows.len() * 5)?;
+                    self.build_string_dictionary_builder::<DICT_TY>(rows.len() * 5);
                 Box::new(ListBuilder::new(values_builder))
             }
             e => {
@@ -767,13 +767,13 @@ impl Decoder {
     fn build_string_dictionary_builder<T>(
         &self,
         row_len: usize,
-    ) -> Result<StringDictionaryBuilder<T>>
+    ) -> StringDictionaryBuilder<T>
     where
         T: ArrowPrimitiveType + ArrowDictionaryKeyType,
     {
         let key_builder = PrimitiveBuilder::<T>::new(row_len);
         let values_builder = StringBuilder::new(row_len * 5);
-        Ok(StringDictionaryBuilder::new(key_builder, values_builder))
+        StringDictionaryBuilder::new(key_builder, values_builder)
     }
 
     #[inline(always)]
@@ -839,12 +839,12 @@ impl Decoder {
         &self,
         rows: &[Value],
         col_name: &str,
-    ) -> Result<ArrayRef>
+    ) -> ArrayRef
     where
         T: ArrowNumericType,
         T::Native: num::NumCast,
     {
-        Ok(Arc::new(
+        Arc::new(
             rows.iter()
                 .map(|row| {
                     row.get(&col_name)
@@ -852,7 +852,7 @@ impl Decoder {
                         .and_then(num::cast::cast)
                 })
                 .collect::<PrimitiveArray<T>>(),
-        ))
+        )
     }
 
     /// Build a nested GenericListArray from a list of unnested `Value`s
@@ -1033,9 +1033,7 @@ impl Decoder {
             .filter(|field| projection.is_empty() || projection.contains(field.name()))
             .map(|field| {
                 match field.data_type() {
-                    DataType::Null => {
-                        Ok(Arc::new(NullArray::new(rows.len())) as ArrayRef)
-                    }
+                    DataType::Null => Arc::new(NullArray::new(rows.len())),
                     DataType::Boolean => self.build_boolean_array(rows, field.name()),
                     DataType::Float64 => {
                         self.build_primitive_array::<Float64Type>(rows, field.name())
@@ -1107,10 +1105,12 @@ impl Decoder {
                                 rows,
                                 field.name(),
                             ),
-                        t => Err(ArrowError::JsonError(format!(
-                            "TimeUnit {:?} not supported with Time64",
-                            t
-                        ))),
+                        t => {
+                            return Err(ArrowError::JsonError(format!(
+                                "TimeUnit {:?} not supported with Time64",
+                                t
+                            )))
+                        }
                     },
                     DataType::Time32(unit) => match unit {
                         TimeUnit::Second => self
@@ -1123,10 +1123,12 @@ impl Decoder {
                                 rows,
                                 field.name(),
                             ),
-                        t => Err(ArrowError::JsonError(format!(
-                            "TimeUnit {:?} not supported with Time32",
-                            t
-                        ))),
+                        t => {
+                            return Err(ArrowError::JsonError(format!(
+                                "TimeUnit {:?} not supported with Time32",
+                                t
+                            )))
+                        }
                     },
                     DataType::Utf8 => Ok(Arc::new(
                         rows.iter()
@@ -1221,7 +1223,7 @@ impl Decoder {
         T: ArrowPrimitiveType + ArrowDictionaryKeyType,
     {
         let mut builder: StringDictionaryBuilder<T> =
-            self.build_string_dictionary_builder(rows.len())?;
+            self.build_string_dictionary_builder(rows.len());
         for row in rows {
             if let Some(value) = row.get(&col_name) {
                 if let Some(str_v) = value.as_str() {
