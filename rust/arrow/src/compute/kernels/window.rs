@@ -59,9 +59,9 @@ where
     let nulls = abs(offset as i64) as usize;
 
     let mut null_array = MutableBuffer::new(nulls);
-    let mut null_data = MutableBuffer::new(nulls * T::get_byte_width());
+    let mut null_data = MutableBuffer::new(nulls * T::BYTE_WIDTH);
     null_array.extend_zeros(nulls);
-    null_data.extend_zeros(nulls * T::get_byte_width());
+    null_data.extend_zeros(nulls * T::BYTE_WIDTH);
 
     let null_data = ArrayData::new(
         T::DATA_TYPE,

@@ -227,13 +227,16 @@ pub trait ArrowPrimitiveType: 'static {
     /// Corresponding Rust native type for the primitive type.
     type Native: ArrowNativeType;
 
-    /// the corresponding Arrow data type of this primitive type.
+    /// The corresponding Arrow data type of this primitive type.
     const DATA_TYPE: DataType;
 
-    /// Returns the byte width of this primitive type.
-    fn get_byte_width() -> usize {
-        size_of::<Self::Native>()
-    }
+    /// The byte width of this primitive type.
+    ///
+    /// Relies on [std::mem::size_of], which became `const` in Rust 1.32.0.
+    const BYTE_WIDTH: usize = size_of::<Self::Native>();
+
+    /// The bit width of this primitive type.
+    const BIT_WIDTH: usize = size_of::<Self::Native>() * 8;
 
     /// Returns a default value of this primitive type.
     ///

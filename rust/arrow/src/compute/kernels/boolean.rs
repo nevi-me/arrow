@@ -295,7 +295,7 @@ where
         left_data
             .buffers()
             .iter()
-            .map(|buf| buf.slice(left.offset() * T::get_byte_width()))
+            .map(|buf| buf.slice(left.offset() * T::BYTE_WIDTH))
             .collect::<Vec<_>>()
     };
 
